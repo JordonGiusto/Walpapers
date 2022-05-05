@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css">
+    <title>Document</title>
+    <script id="vert-shader" type="notjs">
+
+        precision mediump float;
+        attribute vec2 a_position;
+
+        uniform vec2 u_resolution;
+
+        void main() {
+            gl_Position = vec4(a_position, 0, 1);
+        }
+
+    </script>
+    <script id="frag-shader-1" type="notjs">
+        
+        precision highp float;
+        uniform vec2 u_resolution;
+        uniform vec3 u_sphere;
+
+        uniform float u_zoom;
+
+        uniform float u_ambient;
+        uniform float u_dither;
+        uniform float u_time;
+
+        float rand(vec2 co){
+            return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        float ISL(vec2 pos, vec3 lightData){
+            
+            float dist = length(pos - lightData.xy)*.004;
+
+            dist += ( rand(pos+vec2(u_time)) -.5) * u_dither;
+
+            return lightData.z/(dist*dist+1.0);
+        }
+        
+        vec4 sphereRaycast(vec3 sp, vec2 pos, vec3 lightData) {
+            //return vec4(vec3(ISL(pos, lightData)),1.0);
+            vec3 ro = vec3(pos,-300.0);
+            vec3 rd = vec3 (0.0, 0.0, -1.0);
+
+            vec3 toCenter = vec3(sp.xy,0.0) - ro;
+            float t0 = dot(toCenter, rd);
+            //float d = pow(pow(t0, 2.0) - pow(length(toCenter), 2.0), 0.5);
+            float d = length(rd*t0 - toCenter);
+
+            //float thc = pow(pow(d, 2.0) + pow(sp.z, 2.0), 0.5);
+            //nvidia safe version
+            float thc = length(rd*t0 -( toCenter - sp.z*(-normalize(toCenter))));
+            
+            
+            vec3 point = (t0 - thc)*rd + ro;
+            vec3 normal = normalize(point - vec3(sp.xy,0.0));
+
+            vec3 lr = normalize(vec3(lightData.xy, 0.0)-point);
+
+            float ld = length(lr);
+            float light = clamp(dot(normal, lr), 0.0, 1.0);
+            light += u_ambient;
+
+            return  vec4(vec3(1.0,0.7,0.4) * light * ISL(pos,lightData), 1.0);
+        }
+        
+
+        float shadowRaycast(vec3 sp, vec2 pos, vec3 lightData){
+            vec2 lr = lightData.xy - pos;
+            vec2 ln = normalize(lr);
+            vec2 diff = (sp.xy - pos);
+
+            float rl = clamp(dot(ln, diff),0.0,length(pos - lightData.xy));
+            vec2 point = ln*rl + pos;
+            bool shadow = length(point-sp.xy) < sp.z;
+            if(shadow){
+                return .8*ISL(pos, lightData);
+            }
+            return (float(!shadow))*ISL(pos, lightData);
+
+
+        }
+
+        float softShadowRaycast(vec3 sp, vec2 pos, vec3 lightData, float radius){
+    </script>
+    <script id="frag-shader-2" type="notjs">
+            vec2 dir = normalize(pos - lightData.xy);
+        
+            vec2 stepDir = vec2(dir.y, -dir.x);
+
+            float total = 0.0;
+
+            for(int i = 0; i < SHADOWSTEPS; i++){
+                float factor = radius*float(i)/float(SHADOWSTEPS) - radius/2.0;
+                vec3 lstep = vec3(lightData.xy + stepDir*factor, lightData.z);
+                total += shadowRaycast(sp, pos, lstep);
+            }
+            return total/float(SHADOWSTEPS);
+        }
+        void main() {
+            vec2 pos = gl_FragCoord.xy - u_resolution / 2.0;
+
+            pos = u_zoom*pos;
+
+            vec3 sp = u_sphere;
+
+
+            vec3 ro = vec3(pos.xy, -400.0*u_zoom);
+            
+            vec3 light = vec3(0.0,0.0,5.0);
+
+            if(length(pos - sp.xy) < sp.z) {
+                gl_FragColor = sphereRaycast(sp, pos, light);
+                return;
+            }
+
+
+            gl_FragColor = vec4(vec3(1.0)*softShadowRaycast(sp,pos,light, 10.0/u_zoom)*.2,1.0);
+            gl_FragColor *= vec4(vec3(1.0,0.7,0.4),1.0);
+        }
+    </script>
+
+
+</head>
+<body> 
+    <canvas id="mainCanvas"></canvas>
+    <script src="index.js"></script>
+</body>
+</html>
+ 
