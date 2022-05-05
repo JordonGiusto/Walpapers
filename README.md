@@ -1,1 +1,1 @@
-Some walpapers made with js
+#Walpapers made with html and Javascript
