@@ -10,4 +10,4 @@ Boids: A walpaper with boids that follow your mouse.
 
 Download [Lively Walpaper](https://rocksdanister.github.io/lively/)
 
-Clone the folder with the walpaper you want, open lively walpaper, add wapaper>browse>placeYouClonedTo/index.html 
+Clone the folder with the walpaper you want, open lively walpaper, add wallaper>browse>placeYouClonedTo/index.html 
